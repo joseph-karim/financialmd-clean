@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { useSupabaseClient } from '@/lib/supabase';
 import { Database } from '@/types/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Alert, AlertDescription } from '../ui/alert';
@@ -32,7 +32,7 @@ const ChecklistLibrary: React.FC = () => {
           .from('checklists')
           .select('*')
           .order('title');
-
+        
         if (error) {
           throw error;
         }

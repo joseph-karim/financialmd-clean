@@ -1,102 +1,98 @@
-import { createContext, useContext, useState } from 'react'
-import { Session, User } from '@supabase/supabase-js'
-import { useNavigate } from 'react-router-dom'
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Mock user for testing without authentication
-const TEST_USER: User = {
-  id: '00000000-0000-0000-0000-000000000000',
-  email: 'test@example.com',
-  app_metadata: {},
-  user_metadata: {},
-  aud: 'authenticated',
-  created_at: new Date().toISOString(),
-}
+// Define types
+type User = {
+  id: string;
+  email: string;
+};
+
+type Session = {
+  user: User | null;
+};
 
 type AuthContextType = {
-  session: Session | null
-  user: User | null
-  signIn: (email: string, password: string) => Promise<{
-    error: Error | null
-  }>
-  signInWithMagicLink: (email: string) => Promise<{
-    error: Error | null
-  }>
-  signUp: (email: string, password: string) => Promise<{
-    error: Error | null
-    data: {
-      user: User | null
-      session: Session | null
-    } | null
-  }>
-  signOut: () => Promise<void>
-  loading: boolean
-  userRole: 'free' | 'paid' | null
-}
+  session: Session | null;
+  user: User | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  loading: boolean;
+};
 
-const AuthContext = createContext<AuthContextType>({
-  session: null,
-  user: null,
-  signIn: async () => ({ error: null }),
-  signInWithMagicLink: async () => ({ error: null }),
-  signUp: async () => ({ error: null, data: null }),
-  signOut: async () => {},
-  loading: true,
-  userRole: null,
-})
+// Create context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate()
-  const [loading] = useState(false)
+// Provider component
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // For testing: Always provide a mock user and 'paid' role
-  const [user] = useState<User>(TEST_USER)
-  const [session] = useState<Session | null>({
-    access_token: 'test-access-token',
-    refresh_token: 'test-refresh-token',
-    expires_in: 3600,
-    expires_at: 9999999999,
-    token_type: 'bearer',
-    user: TEST_USER,
-  })
-  const [userRole] = useState<'free' | 'paid'>('paid')
-
-  // Mock auth functions that immediately succeed
-  const signIn = async (_email: string, _password: string) => {
-    return { error: null }
-  }
-
-  const signInWithMagicLink = async (_email: string) => {
-    return { error: null }
-  }
-
-  const signUp = async (_email: string, _password: string) => {
-    return {
-      error: null,
-      data: {
-        user: TEST_USER,
-        session: session
+  useEffect(() => {
+    // Mock authentication - simulate checking for an existing session
+    const checkAuth = async () => {
+      setLoading(true);
+      try {
+        // For demo purposes, we'll simulate a logged-in user
+        const mockUser = { id: '1', email: 'user@example.com' };
+        const mockSession = { user: mockUser };
+        
+        setSession(mockSession);
+        setUser(mockUser);
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    checkAuth();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      // Mock sign in
+      const mockUser = { id: '1', email };
+      const mockSession = { user: mockUser };
+      
+      setSession(mockSession);
+      setUser(mockUser);
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const signOut = async () => {
-    navigate('/')
-  }
+    setLoading(true);
+    try {
+      // Mock sign out
+      setSession(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const value = {
-    session,
-    user,
-    signIn,
-    signInWithMagicLink,
-    signUp,
-    signOut,
-    loading,
-    userRole,
-  }
+  return (
+    <AuthContext.Provider value={{ session, user, signIn, signOut, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
+// Hook to use the auth context
 export const useAuth = () => {
-  return useContext(AuthContext)
-}
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
