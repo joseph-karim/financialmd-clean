@@ -1,30 +1,25 @@
-import React from 'react';
-import dynamic from 'next/dynamic';
+import React, { Suspense, lazy } from 'react';
 import { Skeleton } from './ui/skeleton';
 
-// Define the available tool components
+// Loading skeleton for tools
+const ToolSkeleton = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-8 w-64" />
+    <Skeleton className="h-4 w-full" />
+    <Skeleton className="h-32 w-full" />
+  </div>
+);
+
+// Define the available tool components using React.lazy
 const toolComponents: Record<string, React.ComponentType<any>> = {
-  AWVChecklist: dynamic(() => import('./tools/AWVChecklist'), {
-    loading: () => <ToolSkeleton />
-  }),
-  AWVRevenueCalculator: dynamic(() => import('./tools/AWVRevenueCalculator'), {
-    loading: () => <ToolSkeleton />
-  }),
-  ChecklistLibrary: dynamic(() => import('./tools/ChecklistLibrary'), {
-    loading: () => <ToolSkeleton />
-  }),
-  CodeLookup: dynamic(() => import('./tools/CodeLookup'), {
-    loading: () => <ToolSkeleton />
-  }),
-  MDMLevelCalculator: dynamic(() => import('./tools/MDMLevelCalculator'), {
-    loading: () => <ToolSkeleton />
-  }),
-  ModifierHelper: dynamic(() => import('./tools/ModifierHelper'), {
-    loading: () => <ToolSkeleton />
-  }),
-  SmartPhraseLibrary: dynamic(() => import('./tools/SmartPhraseLibrary'), {
-    loading: () => <ToolSkeleton />
-  }),
+  AWVChecklist: lazy(() => import('./tools/AWVChecklist')),
+  AWVRevenueCalculator: lazy(() => import('./tools/AWVRevenueCalculator')),
+  ChecklistLibrary: lazy(() => import('./tools/ChecklistLibrary')),
+  CodeLookup: lazy(() => import('./tools/CodeLookup')),
+  MDMLevelCalculator: lazy(() => import('./tools/MDMLevelCalculator')),
+  ModifierHelper: lazy(() => import('./tools/ModifierHelper')),
+  SmartPhraseLibrary: lazy(() => import('./tools/SmartPhraseLibrary')),
+  
   // Placeholder components for future implementation
   AIScribeAssist: () => (
     <div className="p-4 border rounded-md bg-muted">
@@ -46,15 +41,6 @@ const toolComponents: Record<string, React.ComponentType<any>> = {
   ),
 };
 
-// Loading skeleton for tools
-const ToolSkeleton = () => (
-  <div className="space-y-4">
-    <Skeleton className="h-8 w-64" />
-    <Skeleton className="h-4 w-full" />
-    <Skeleton className="h-32 w-full" />
-  </div>
-);
-
 interface ToolComponentLoaderProps {
   componentName: string;
 }
@@ -70,6 +56,24 @@ const ToolComponentLoader: React.FC<ToolComponentLoaderProps> = ({ componentName
     );
   }
   
+  // Wrap lazy-loaded components in Suspense
+  if (
+    componentName === 'AWVChecklist' ||
+    componentName === 'AWVRevenueCalculator' ||
+    componentName === 'ChecklistLibrary' ||
+    componentName === 'CodeLookup' ||
+    componentName === 'MDMLevelCalculator' ||
+    componentName === 'ModifierHelper' ||
+    componentName === 'SmartPhraseLibrary'
+  ) {
+    return (
+      <Suspense fallback={<ToolSkeleton />}>
+        <Component />
+      </Suspense>
+    );
+  }
+  
+  // For non-lazy components, render directly
   return <Component />;
 };
 
