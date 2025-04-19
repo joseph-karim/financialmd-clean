@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { getModuleById } from '@/lib/module-data';
 
@@ -22,8 +22,9 @@ const moduleIdToSlugMap: Record<string, string> = {
 };
 
 export default function LegacyModuleRedirect() {
-  const router = useRouter();
-  const { moduleId } = router.query;
+  const params = useParams();
+  const navigate = useNavigate();
+  const moduleId = params.moduleId;
 
   useEffect(() => {
     if (moduleId) {
@@ -35,13 +36,13 @@ export default function LegacyModuleRedirect() {
       if (oldModule) {
         // Map to new structure if possible
         const newSlug = moduleIdToSlugMap[moduleIdStr] || 'modules';
-        router.replace(`/modules/${newSlug}`);
+        navigate(`/modules/${newSlug}`, { replace: true });
       } else {
         // If module doesn't exist, redirect to modules index
-        router.replace('/modules');
+        navigate('/modules', { replace: true });
       }
     }
-  }, [moduleId, router]);
+  }, [moduleId, navigate]);
 
   return (
     <div className="container py-8">

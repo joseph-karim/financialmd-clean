@@ -1,15 +1,14 @@
-import { useRouter } from 'next/router';
+import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { getModuleBySlug, Module } from '@/lib/module-data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 
 export default function ModuleIndexPage() {
-  const router = useRouter();
-  const { moduleSlug } = router.query;
+  const params = useParams();
+  const moduleSlug = params.moduleSlug;
   const [module, setModule] = useState<Module | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +30,7 @@ export default function ModuleIndexPage() {
         <h1 className="text-2xl font-bold mb-4">Module Not Found</h1>
         <p>The requested module could not be found.</p>
         <Button asChild className="mt-4">
-          <Link href="/modules">Back to Modules</Link>
+          <Link to="/modules">Back to Modules</Link>
         </Button>
       </div>
     );
@@ -40,7 +39,7 @@ export default function ModuleIndexPage() {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <Link href="/modules" className="text-sm text-muted-foreground hover:text-primary">
+        <Link to="/modules" className="text-sm text-muted-foreground hover:text-primary">
           ← Back to All Modules
         </Link>
         <h1 className="text-4xl font-bold mt-2">{module.title}</h1>
@@ -62,7 +61,7 @@ export default function ModuleIndexPage() {
             </CardContent>
             <CardFooter>
               <Button asChild>
-                <Link href={`/modules/${module.slug}/${section.slug}`}>
+                <Link to={`/modules/${module.slug}/${section.slug}`}>
                   Go to Section
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>

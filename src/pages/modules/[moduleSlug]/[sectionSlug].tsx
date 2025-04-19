@@ -1,15 +1,15 @@
-import { useRouter } from 'next/router';
+import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { getModuleBySlug, getSectionBySlug, Module, Section } from '@/lib/module-data';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 import ToolComponentLoader from '@/components/ToolComponentLoader';
 import { Separator } from '@/components/ui/separator';
 
 export default function ModuleSectionPage() {
-  const router = useRouter();
-  const { moduleSlug, sectionSlug } = router.query;
+  const params = useParams();
+  const moduleSlug = params.moduleSlug;
+  const sectionSlug = params.sectionSlug;
   const [module, setModule] = useState<Module | null>(null);
   const [section, setSection] = useState<Section | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +18,7 @@ export default function ModuleSectionPage() {
     if (moduleSlug && sectionSlug) {
       const foundModule = getModuleBySlug(moduleSlug as string);
       const foundSection = getSectionBySlug(moduleSlug as string, sectionSlug as string);
-
+      
       setModule(foundModule || null);
       setSection(foundSection || null);
       setLoading(false);
@@ -28,13 +28,13 @@ export default function ModuleSectionPage() {
   // Get previous and next sections
   const getPrevNextSections = () => {
     if (!module || !section) return { prev: null, next: null };
-
+    
     const currentIndex = module.sections.findIndex(s => s.slug === section.slug);
     if (currentIndex === -1) return { prev: null, next: null };
-
+    
     const prev = currentIndex > 0 ? module.sections[currentIndex - 1] : null;
     const next = currentIndex < module.sections.length - 1 ? module.sections[currentIndex + 1] : null;
-
+    
     return { prev, next };
   };
 
@@ -43,12 +43,11 @@ export default function ModuleSectionPage() {
   // Render tool components if section has tools
   const renderTools = () => {
     if (!section?.hasTools || !section.toolComponents) return null;
-
+    
     return (
       <div className="mt-8 space-y-8">
         <Separator />
         <h2 className="text-2xl font-bold">Interactive Tools</h2>
-
         {section.toolComponents.map((componentName) => (
           <ToolComponentLoader key={componentName} componentName={componentName} />
         ))}
@@ -66,7 +65,7 @@ export default function ModuleSectionPage() {
         <h1 className="text-2xl font-bold mb-4">Module or Section Not Found</h1>
         <p>The requested module or section could not be found.</p>
         <Button asChild className="mt-4">
-          <Link href="/modules">Back to Modules</Link>
+          <Link to="/modules">Back to Modules</Link>
         </Button>
       </div>
     );
@@ -75,7 +74,7 @@ export default function ModuleSectionPage() {
   return (
     <div className="container py-8">
       <div className="mb-6">
-        <Link href={`/modules/${moduleSlug}`} className="text-sm text-muted-foreground hover:text-primary">
+        <Link to={`/modules/${moduleSlug}`} className="text-sm text-muted-foreground hover:text-primary">
           ← Back to {module.title}
         </Link>
         <h1 className="text-3xl font-bold mt-2">{section.title}</h1>
@@ -92,7 +91,7 @@ export default function ModuleSectionPage() {
       <div className="flex justify-between mt-12">
         {prev ? (
           <Button variant="outline" asChild>
-            <Link href={`/modules/${moduleSlug}/${prev.slug}`}>
+            <Link to={`/modules/${moduleSlug}/${prev.slug}`}>
               <ChevronLeft className="mr-2 h-4 w-4" />
               {prev.title}
             </Link>
@@ -103,7 +102,7 @@ export default function ModuleSectionPage() {
 
         {next && (
           <Button asChild>
-            <Link href={`/modules/${moduleSlug}/${next.slug}`}>
+            <Link to={`/modules/${moduleSlug}/${next.slug}`}>
               {next.title}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Link>
