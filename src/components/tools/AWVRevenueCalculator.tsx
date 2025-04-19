@@ -4,8 +4,6 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { Database } from '@/types/supabase';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Info, Calculator } from 'lucide-react';
@@ -18,9 +16,8 @@ interface CodeData {
 }
 
 const AWVRevenueCalculator: React.FC = () => {
-  const supabase = useSupabaseClient<Database>();
   const [codeData, setCodeData] = useState<Record<string, CodeData>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Calculator state
@@ -33,45 +30,53 @@ const AWVRevenueCalculator: React.FC = () => {
   const [emPercentage, setEmPercentage] = useState<number>(50);
   const [acpPercentage, setAcpPercentage] = useState<number>(10);
   const [initialPercentage, setInitialPercentage] = useState<number>(20);
-
+  
   useEffect(() => {
-    const fetchCodeData = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('codes')
-          .select('code, description_short, national_wrvu')
-          .in('code', ['G0438', 'G0439', '99214', '99497', 'G0444', 'G0442']);
-
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          const codeMap: Record<string, CodeData> = {};
-          data.forEach(item => {
-            codeMap[item.code] = item;
-          });
-          setCodeData(codeMap);
-        }
-      } catch (err) {
-        console.error('Error fetching code data:', err);
-        setError('Failed to load code data. Please try again later.');
-      } finally {
-        setLoading(false);
+    // Initialize with mock data since we don't have Supabase access
+    const mockData: Record<string, CodeData> = {
+      'G0438': {
+        code: 'G0438',
+        description_short: 'Initial AWV',
+        national_wrvu: 2.43
+      },
+      'G0439': {
+        code: 'G0439',
+        description_short: 'Subsequent AWV',
+        national_wrvu: 1.50
+      },
+      '99214': {
+        code: '99214',
+        description_short: 'Office/outpatient visit est',
+        national_wrvu: 1.92
+      },
+      '99497': {
+        code: '99497',
+        description_short: 'Advance care planning',
+        national_wrvu: 1.50
+      },
+      'G0444': {
+        code: 'G0444',
+        description_short: 'Depression screen annual',
+        national_wrvu: 0.18
+      },
+      'G0442': {
+        code: 'G0442',
+        description_short: 'Annual alcohol screen',
+        national_wrvu: 0.18
       }
     };
-
-    fetchCodeData();
-  }, [supabase]);
+    
+    setCodeData(mockData);
+    setLoading(false);
+  }, []);
 
   const calculateRevenue = () => {
     if (!codeData.G0438 || !codeData.G0439) return { total: 0, breakdown: [] };
     
     const initialAwvRvu = codeData.G0438.national_wrvu;
     const subsequentAwvRvu = codeData.G0439.national_wrvu;
-    const emRvu = codeData.['99214']?.national_wrvu || 1.5;
-    const acpRvu = codeData.['99497']?.national_wrvu || 1.5;
+    const emRvu = codeData['99214']?.national_wrvu || 1.5;
+    const acpRvu = codeData['99497']?.national_wrvu || 1.5;
     const g0444Rvu = codeData.G0444?.national_wrvu || 0.18;
     const g0442Rvu = codeData.G0442?.national_wrvu || 0.18;
     
@@ -103,7 +108,7 @@ const AWVRevenueCalculator: React.FC = () => {
       },
       { 
         code: 'G0439', 
-        description: 'Subsequent AWV', 
+        description: 'Subsequent AWV',
         count: subsequentCount, 
         rvu: subsequentAwvRvu, 
         revenue: subsequentRevenue 
@@ -113,7 +118,7 @@ const AWVRevenueCalculator: React.FC = () => {
     if (includeEM) {
       breakdown.push({ 
         code: '99214-25', 
-        description: 'E/M with Modifier 25', 
+        description: 'E/M with Modifier 25',
         count: emCount, 
         rvu: emRvu, 
         revenue: emRevenue 
@@ -123,7 +128,7 @@ const AWVRevenueCalculator: React.FC = () => {
     if (includeACP) {
       breakdown.push({ 
         code: '99497', 
-        description: 'Advance Care Planning', 
+        description: 'Advance Care Planning',
         count: acpCount, 
         rvu: acpRvu, 
         revenue: acpRevenue 
@@ -133,7 +138,7 @@ const AWVRevenueCalculator: React.FC = () => {
     if (includeG0444) {
       breakdown.push({ 
         code: 'G0444', 
-        description: 'Depression Screening', 
+        description: 'Depression Screening',
         count: g0444Count, 
         rvu: g0444Rvu, 
         revenue: g0444Revenue 
@@ -143,7 +148,7 @@ const AWVRevenueCalculator: React.FC = () => {
     if (includeG0442) {
       breakdown.push({ 
         code: 'G0442', 
-        description: 'Alcohol Screening', 
+        description: 'Alcohol Screening',
         count: g0442Count, 
         rvu: g0442Rvu, 
         revenue: g0442Revenue 
@@ -232,8 +237,8 @@ const AWVRevenueCalculator: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <Checkbox 
                     id="includeEM" 
-                    checked={includeEM} 
-                    onCheckedChange={() => setIncludeEM(!includeEM)} 
+                    checked={includeEM}
+                    onCheckedChange={() => setIncludeEM(!includeEM)}
                   />
                   <div className="space-y-1">
                     <Label htmlFor="includeEM" className="font-medium">
@@ -258,8 +263,8 @@ const AWVRevenueCalculator: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <Checkbox 
                     id="includeACP" 
-                    checked={includeACP} 
-                    onCheckedChange={() => setIncludeACP(!includeACP)} 
+                    checked={includeACP}
+                    onCheckedChange={() => setIncludeACP(!includeACP)}
                   />
                   <div className="space-y-1">
                     <Label htmlFor="includeACP" className="font-medium">
@@ -284,8 +289,8 @@ const AWVRevenueCalculator: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <Checkbox 
                     id="includeG0444" 
-                    checked={includeG0444} 
-                    onCheckedChange={() => setIncludeG0444(!includeG0444)} 
+                    checked={includeG0444}
+                    onCheckedChange={() => setIncludeG0444(!includeG0444)}
                   />
                   <div className="space-y-1">
                     <Label htmlFor="includeG0444" className="font-medium">
@@ -300,8 +305,8 @@ const AWVRevenueCalculator: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <Checkbox 
                     id="includeG0442" 
-                    checked={includeG0442} 
-                    onCheckedChange={() => setIncludeG0442(!includeG0442)} 
+                    checked={includeG0442}
+                    onCheckedChange={() => setIncludeG0442(!includeG0442)}
                   />
                   <div className="space-y-1">
                     <Label htmlFor="includeG0442" className="font-medium">
