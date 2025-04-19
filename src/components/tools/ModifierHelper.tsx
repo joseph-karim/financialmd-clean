@@ -25,7 +25,7 @@ const ModifierHelper: React.FC = () => {
   const [mod25Items, setMod25Items] = useState([
     { id: '1', label: 'The E/M service is significant and separately identifiable from the procedure', checked: false },
     { id: '2', label: 'The E/M service is above and beyond the usual pre- and post-procedure work', checked: false },
-    { id: '3', label: 'The patient's condition required additional work beyond the procedure', checked: false },
+    { id: '3', label: 'The patient condition required additional work beyond the procedure', checked: false },
     { id: '4', label: 'Documentation clearly identifies the separate E/M service', checked: false },
     { id: '5', label: 'The diagnosis supports the need for the separate E/M service', checked: false },
     { id: '6', label: 'The documentation would stand alone as a billable service', checked: false }
