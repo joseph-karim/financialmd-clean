@@ -4,11 +4,9 @@ import { useSupabaseClient } from '@/lib/supabase';
 import { Database } from '@/types/supabase';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Alert, AlertDescription } from '../ui/alert';
 import { Copy } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { useToast } from '../ui/use-toast';
 
 interface SmartPhrase {
   id: string;
@@ -18,12 +16,12 @@ interface SmartPhrase {
 
 const SmartPhraseLibrary: React.FC = () => {
   const supabase = useSupabaseClient<Database>();
-  const { toast } = useToast();
   const [phrases, setPhrases] = useState<SmartPhrase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPhrases, setFilteredPhrases] = useState<SmartPhrase[]>([]);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchPhrases = async () => {
@@ -71,19 +69,12 @@ const SmartPhraseLibrary: React.FC = () => {
   // Copy phrase to clipboard
   const copyToClipboard = (content: string) => {
     navigator.clipboard.writeText(content).then(() => {
-      toast({
-        title: "Copied to clipboard",
-        description: "The smart phrase has been copied to your clipboard.",
-        duration: 3000
-      });
+      setCopySuccess('Copied to clipboard!');
+      setTimeout(() => setCopySuccess(null), 2000);
     }).catch(err => {
       console.error('Failed to copy text: ', err);
-      toast({
-        title: "Failed to copy",
-        description: "Please try again or copy manually.",
-        variant: "destructive",
-        duration: 3000
-      });
+      setCopySuccess('Failed to copy. Please try again.');
+      setTimeout(() => setCopySuccess(null), 2000);
     });
   };
 
@@ -107,6 +98,12 @@ const SmartPhraseLibrary: React.FC = () => {
             Search
           </Button>
         </div>
+        
+        {copySuccess && (
+          <Alert className="mb-4">
+            <AlertDescription>{copySuccess}</AlertDescription>
+          </Alert>
+        )}
         
         {loading ? (
           <div className="flex justify-center items-center h-40">
