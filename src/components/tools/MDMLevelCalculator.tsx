@@ -1,256 +1,219 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
-import { Checkbox } from '../ui/checkbox';
-import { Label } from '../ui/label';
-import { Button } from '../ui/button';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Separator } from '../ui/separator';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { useSupabaseClient } from '@/lib/supabase';
 import { Database } from '@/types/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { HelpCircle, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../ui/tooltip";
-
-interface ChecklistItem {
-  id: string;
-  checklist_id: string;
-  item_text: string;
-  required: boolean;
-  order_index: number;
-  explanation: string | null;
-}
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Info } from 'lucide-react';
+import { Separator } from '../ui/separator';
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
 
 const MDMLevelCalculator: React.FC = () => {
   const supabase = useSupabaseClient<Database>();
-  const [items, setItems] = useState<ChecklistItem[]>([]);
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchChecklist = async () => {
-      setLoading(true);
-      try {
-        // Fetch the MDM checklist items
-        const { data, error } = await supabase
-          .from('checklist_items')
-          .select('*')
-          .eq('checklist_id', '4b2efc8f-80c3-4b7c-b1a2-9f63c4c3454c') // MDM checklist ID
-          .order('order_index');
-
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          setItems(data);
-          // Initialize all items as unchecked
-          const initialCheckedState: Record<string, boolean> = {};
-          data.forEach(item => {
-            initialCheckedState[item.id] = false;
-          });
-          setCheckedItems(initialCheckedState);
-        }
-      } catch (err) {
-        console.error('Error fetching checklist:', err);
-        setError('Failed to load checklist items. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchChecklist();
-  }, [supabase]);
-
-  const handleCheckboxChange = (id: string) => {
-    setCheckedItems(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  const resetChecklist = () => {
-    const resetState: Record<string, boolean> = {};
-    items.forEach(item => {
-      resetState[item.id] = false;
-    });
-    setCheckedItems(resetState);
-  };
-
-  // Group items by complexity level
-  const moderateItems = items.filter(item => item.order_index <= 7); // First 7 items are moderate complexity
-  const highItems = items.filter(item => item.order_index > 7); // Remaining items are high complexity
-
-  // Count checked items by complexity
-  const moderateCheckedCount = moderateItems.filter(item => checkedItems[item.id]).length;
-  const highCheckedCount = highItems.filter(item => checkedItems[item.id]).length;
-
-  // Determine MDM level
-  const getMDMLevel = () => {
-    if (highCheckedCount >= 2) {
-      return {
-        level: 'High',
-        code: 'Established: 99215 / New: 99205',
-        description: 'High complexity MDM requires at least 2 elements from the high complexity category.',
-        color: 'bg-blue-100 text-blue-800'
-      };
-    } else if (moderateCheckedCount >= 2 || (moderateCheckedCount >= 1 && highCheckedCount >= 1)) {
-      return {
-        level: 'Moderate',
-        code: 'Established: 99214 / New: 99204',
-        description: 'Moderate complexity MDM requires at least 2 elements from the moderate complexity category.',
-        color: 'bg-green-100 text-green-800'
-      };
-    } else {
-      return {
-        level: 'Low or Straightforward',
-        code: 'Established: 99212-99213 / New: 99202-99203',
-        description: 'Based on your selections, the MDM level is low or straightforward. Select more elements to reach moderate or high complexity.',
-        color: 'bg-gray-100 text-gray-800'
-      };
+  
+  // State for the three MDM elements
+  const [problemsLevel, setProblemsLevel] = useState<string | null>(null);
+  const [dataLevel, setDataLevel] = useState<string | null>(null);
+  const [riskLevel, setRiskLevel] = useState<string | null>(null);
+  
+  // Calculate the overall MDM level
+  const calculateMDMLevel = () => {
+    if (!problemsLevel || !dataLevel || !riskLevel) {
+      return null;
     }
+    
+    // Convert levels to numeric values
+    const levelValues = {
+      'minimal': 1,
+      'low': 2,
+      'moderate': 3,
+      'high': 4
+    };
+    
+    const problemsValue = levelValues[problemsLevel as keyof typeof levelValues];
+    const dataValue = levelValues[dataLevel as keyof typeof levelValues];
+    const riskValue = levelValues[riskLevel as keyof typeof levelValues];
+    
+    // Get the middle value (2nd highest of the three elements)
+    const sortedValues = [problemsValue, dataValue, riskValue].sort((a, b) => a - b);
+    const middleValue = sortedValues[1];
+    
+    // Convert back to level
+    const valueToLevel = {
+      1: 'minimal',
+      2: 'low',
+      3: 'moderate',
+      4: 'high'
+    };
+    
+    return valueToLevel[middleValue as keyof typeof valueToLevel];
   };
-
-  const mdmLevel = getMDMLevel();
+  
+  // Map MDM level to E/M code
+  const getMDMCode = (level: string | null) => {
+    if (!level) return null;
+    
+    const levelToCode = {
+      'minimal': '99202/99212',
+      'low': '99202/99212',
+      'moderate': '99203/99213',
+      'high': '99204/99214'
+    };
+    
+    return levelToCode[level as keyof typeof levelToCode];
+  };
+  
+  const mdmLevel = calculateMDMLevel();
+  const emCode = getMDMCode(mdmLevel);
+  
+  // Reset all selections
+  const resetSelections = () => {
+    setProblemsLevel(null);
+    setDataLevel(null);
+    setRiskLevel(null);
+  };
 
   return (
     <Card className="w-full max-w-3xl mx-auto">
       <CardHeader>
-        <CardTitle>Medical Decision Making (MDM) Level Calculator</CardTitle>
+        <CardTitle>Medical Decision Making (MDM) Calculator</CardTitle>
         <CardDescription>
-          Use this tool to estimate the appropriate E/M level based on medical decision making complexity.
+          Determine the appropriate level of MDM for E/M coding
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="flex justify-center items-center h-40">
-            <p>Loading calculator...</p>
-          </div>
-        ) : error ? (
-          <Alert variant="destructive">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            <Alert className="mb-6">
-              <Info className="h-4 w-4" />
-              <AlertTitle>How to Use</AlertTitle>
-              <AlertDescription>
-                Check all elements that apply to your patient encounter. The calculator will determine the appropriate MDM level based on your selections.
-              </AlertDescription>
-            </Alert>
-
-            <Tabs defaultValue="moderate">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="moderate">Moderate Complexity</TabsTrigger>
-                <TabsTrigger value="high">High Complexity</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="moderate" className="space-y-4 mt-4">
-                {moderateItems.map((item) => (
-                  <div key={item.id} className="flex items-start space-x-3">
-                    <Checkbox 
-                      id={item.id} 
-                      checked={checkedItems[item.id] || false} 
-                      onCheckedChange={() => handleCheckboxChange(item.id)} 
-                    />
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={item.id} className="font-medium">
-                          {item.item_text}
-                        </Label>
-                        {item.explanation && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p>{item.explanation}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </TabsContent>
-              
-              <TabsContent value="high" className="space-y-4 mt-4">
-                {highItems.map((item) => (
-                  <div key={item.id} className="flex items-start space-x-3">
-                    <Checkbox 
-                      id={item.id} 
-                      checked={checkedItems[item.id] || false} 
-                      onCheckedChange={() => handleCheckboxChange(item.id)} 
-                    />
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={item.id} className="font-medium">
-                          {item.item_text}
-                        </Label>
-                        {item.explanation && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p>{item.explanation}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </TabsContent>
-            </Tabs>
-
-            <Separator className="my-6" />
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium">Selected Elements:</p>
-                  <p className="text-sm">Moderate: {moderateCheckedCount} / High: {highCheckedCount}</p>
+        <Alert className="mb-6">
+          <Info className="h-4 w-4" />
+          <AlertTitle>About MDM Calculation</AlertTitle>
+          <AlertDescription>
+            As of 2021, E/M code selection is primarily based on Medical Decision Making (MDM) or time. This calculator helps determine the level of MDM based on the 2021 guidelines.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-medium mb-3">Number and Complexity of Problems Addressed</h3>
+            <RadioGroup value={problemsLevel || ""} onValueChange={setProblemsLevel}>
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="minimal" id="problems-minimal" />
+                  <Label htmlFor="problems-minimal" className="leading-normal">
+                    <span className="font-medium">Minimal</span> - 1 self-limited or minor problem
+                  </Label>
                 </div>
-                
-                <div className={`px-4 py-2 rounded-md ${mdmLevel.color}`}>
-                  <p className="font-medium">{mdmLevel.level} Complexity</p>
-                  <p className="text-sm">{mdmLevel.code}</p>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="low" id="problems-low" />
+                  <Label htmlFor="problems-low" className="leading-normal">
+                    <span className="font-medium">Low</span> - 2+ self-limited or minor problems; 1 stable chronic illness; 1 acute, uncomplicated illness/injury
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="moderate" id="problems-moderate" />
+                  <Label htmlFor="problems-moderate" className="leading-normal">
+                    <span className="font-medium">Moderate</span> - 1+ chronic illnesses with exacerbation; 2+ stable chronic illnesses; 1 undiagnosed new problem with uncertain prognosis; 1 acute illness with systemic symptoms
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="high" id="problems-high" />
+                  <Label htmlFor="problems-high" className="leading-normal">
+                    <span className="font-medium">High</span> - 1+ chronic illnesses with severe exacerbation; 1 acute/chronic illness that poses threat to life or bodily function
+                  </Label>
                 </div>
               </div>
-              
-              <Alert>
-                <AlertTitle>MDM Assessment</AlertTitle>
-                <AlertDescription>
-                  {mdmLevel.description}
-                </AlertDescription>
-              </Alert>
-              
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Remember</AlertTitle>
-                <AlertDescription>
-                  E/M level is determined by either MDM or total time, whichever is more favorable. This tool only calculates the MDM component.
-                </AlertDescription>
-              </Alert>
-            </div>
-          </>
-        )}
+            </RadioGroup>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <h3 className="text-lg font-medium mb-3">Amount and/or Complexity of Data to be Reviewed and Analyzed</h3>
+            <RadioGroup value={dataLevel || ""} onValueChange={setDataLevel}>
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="minimal" id="data-minimal" />
+                  <Label htmlFor="data-minimal" className="leading-normal">
+                    <span className="font-medium">Minimal or None</span> - Minimal or no data review
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="low" id="data-low" />
+                  <Label htmlFor="data-low" className="leading-normal">
+                    <span className="font-medium">Low</span> - Review of prior external notes; order of labs/tests; assessment requiring independent historian
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="moderate" id="data-moderate" />
+                  <Label htmlFor="data-moderate" className="leading-normal">
+                    <span className="font-medium">Moderate</span> - Review of prior testing; independent interpretation of tests; discussion of management with external physician/QHP
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="high" id="data-high" />
+                  <Label htmlFor="data-high" className="leading-normal">
+                    <span className="font-medium">High</span> - Analysis of complex tests; discussion of management with external physician/QHP requiring extensive additional work
+                  </Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <h3 className="text-lg font-medium mb-3">Risk of Complications and/or Morbidity or Mortality</h3>
+            <RadioGroup value={riskLevel || ""} onValueChange={setRiskLevel}>
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="minimal" id="risk-minimal" />
+                  <Label htmlFor="risk-minimal" className="leading-normal">
+                    <span className="font-medium">Minimal</span> - Minimal risk (e.g., bandaid, OTC medications)
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="low" id="risk-low" />
+                  <Label htmlFor="risk-low" className="leading-normal">
+                    <span className="font-medium">Low</span> - Low risk (e.g., minor surgery without risk factors, OTC medications, IV fluids without additives)
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="moderate" id="risk-moderate" />
+                  <Label htmlFor="risk-moderate" className="leading-normal">
+                    <span className="font-medium">Moderate</span> - Moderate risk (e.g., minor surgery with risk factors, prescription drug management, diagnosis or treatment significantly limited by social determinants of health)
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="high" id="risk-high" />
+                  <Label htmlFor="risk-high" className="leading-normal">
+                    <span className="font-medium">High</span> - High risk (e.g., major surgery, parenteral controlled substances, drug therapy requiring intensive monitoring, decision regarding hospitalization)
+                  </Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+          
+          <Separator />
+          
+          <div className="p-4 border rounded-md bg-muted">
+            <h3 className="text-lg font-medium mb-2">MDM Level Assessment</h3>
+            {mdmLevel ? (
+              <>
+                <p className="mb-2">Based on your selections, the MDM level is: <span className="font-bold">{mdmLevel.toUpperCase()}</span></p>
+                <p>Corresponding E/M code (new/established): <span className="font-bold">{emCode}</span></p>
+              </>
+            ) : (
+              <p>Please select all three elements to determine the MDM level.</p>
+            )}
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={resetSelections}>Reset</Button>
+          </div>
+        </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <p className="text-xs text-muted-foreground">Source: AAFP, IDSA, CMS</p>
-        <Button variant="outline" onClick={resetChecklist}>Reset</Button>
+      <CardFooter>
+        <p className="text-xs text-muted-foreground">Source: AMA CPT® E/M Office Visit Guidelines (2021)</p>
       </CardFooter>
     </Card>
   );

@@ -1,35 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { useSupabaseClient } from '@/lib/supabase';
+import { Database } from '@/types/supabase';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { Database } from '@/types/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Copy, Search, Check, Tag } from 'lucide-react';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
+import { Copy } from 'lucide-react';
+import { Separator } from '../ui/separator';
+import { useToast } from '../ui/use-toast';
 
 interface SmartPhrase {
   id: string;
-  phrase_name: string;
+  title: string;
   content: string;
-  scenario: string;
-  related_codes: string[] | null;
-  source_recommendation: string | null;
 }
 
 const SmartPhraseLibrary: React.FC = () => {
   const supabase = useSupabaseClient<Database>();
+  const { toast } = useToast();
   const [phrases, setPhrases] = useState<SmartPhrase[]>([]);
-  const [filteredPhrases, setFilteredPhrases] = useState<SmartPhrase[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedScenario, setSelectedScenario] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [scenarios, setScenarios] = useState<string[]>([]);
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredPhrases, setFilteredPhrases] = useState<SmartPhrase[]>([]);
+  
   useEffect(() => {
     const fetchPhrases = async () => {
       setLoading(true);
@@ -37,8 +32,8 @@ const SmartPhraseLibrary: React.FC = () => {
         const { data, error } = await supabase
           .from('smart_phrases')
           .select('*')
-          .order('scenario', { ascending: true });
-
+          .order('title');
+        
         if (error) {
           throw error;
         }
@@ -46,10 +41,6 @@ const SmartPhraseLibrary: React.FC = () => {
         if (data) {
           setPhrases(data);
           setFilteredPhrases(data);
-          
-          // Extract unique scenarios for tabs
-          const uniqueScenarios = Array.from(new Set(data.map(phrase => phrase.scenario)));
-          setScenarios(uniqueScenarios);
         }
       } catch (err) {
         console.error('Error fetching smart phrases:', err);
@@ -61,44 +52,62 @@ const SmartPhraseLibrary: React.FC = () => {
 
     fetchPhrases();
   }, [supabase]);
-
-  useEffect(() => {
-    // Filter phrases based on search term and selected scenario
-    let filtered = phrases;
-    
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        phrase => 
-          phrase.phrase_name.toLowerCase().includes(lowerSearchTerm) || 
-          phrase.content.toLowerCase().includes(lowerSearchTerm) ||
-          phrase.scenario.toLowerCase().includes(lowerSearchTerm) ||
-          (phrase.related_codes && phrase.related_codes.some(code => code.toLowerCase().includes(lowerSearchTerm)))
-      );
+  
+  // Filter phrases based on search term
+  const handleSearch = () => {
+    if (!searchTerm.trim()) {
+      setFilteredPhrases(phrases);
+      return;
     }
     
-    if (selectedScenario !== 'all') {
-      filtered = filtered.filter(phrase => phrase.scenario === selectedScenario);
-    }
+    const filtered = phrases.filter(phrase => 
+      phrase.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      phrase.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     
     setFilteredPhrases(filtered);
-  }, [searchTerm, selectedScenario, phrases]);
-
-  const handleCopy = (id: string, content: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  };
+  
+  // Copy phrase to clipboard
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content).then(() => {
+      toast({
+        title: "Copied to clipboard",
+        description: "The smart phrase has been copied to your clipboard.",
+        duration: 3000
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      toast({
+        title: "Failed to copy",
+        description: "Please try again or copy manually.",
+        variant: "destructive",
+        duration: 3000
+      });
+    });
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-3xl mx-auto">
       <CardHeader>
         <CardTitle>Smart Phrase Library</CardTitle>
         <CardDescription>
-          Browse and copy reusable documentation snippets for common clinical scenarios.
+          Reusable text snippets for common documentation scenarios
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="flex space-x-2 mb-6">
+          <Input
+            placeholder="Search phrases..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <Button onClick={handleSearch} disabled={loading}>
+            Search
+          </Button>
+        </div>
+        
         {loading ? (
           <div className="flex justify-center items-center h-40">
             <p>Loading smart phrases...</p>
@@ -107,106 +116,40 @@ const SmartPhraseLibrary: React.FC = () => {
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+        ) : filteredPhrases.length === 0 ? (
+          <Alert>
+            <AlertDescription>No smart phrases found matching your search.</AlertDescription>
+          </Alert>
         ) : (
-          <>
-            <div className="flex items-center space-x-2 mb-6">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by phrase name, content, scenario, or code..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                variant="outline" 
-                onClick={() => setSearchTerm('')}
-                disabled={!searchTerm}
-              >
-                Clear
-              </Button>
-            </div>
-
-            <Tabs defaultValue="all" value={selectedScenario} onValueChange={setSelectedScenario}>
-              <TabsList className="mb-4 flex flex-wrap h-auto">
-                <TabsTrigger value="all">All</TabsTrigger>
-                {scenarios.map(scenario => (
-                  <TabsTrigger key={scenario} value={scenario}>
-                    {scenario}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              <TabsContent value={selectedScenario} className="mt-0">
-                {filteredPhrases.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No phrases found matching your criteria.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {filteredPhrases.map((phrase) => (
-                      <div key={phrase.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h3 className="font-medium">{phrase.phrase_name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                <Tag className="h-3 w-3 mr-1" />
-                                {phrase.scenario}
-                              </Badge>
-                              {phrase.source_recommendation && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Source: {phrase.source_recommendation}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCopy(phrase.id, phrase.content)}
-                            className="flex items-center gap-1"
-                          >
-                            {copiedId === phrase.id ? (
-                              <>
-                                <Check className="h-4 w-4" />
-                                Copied
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-4 w-4" />
-                                Copy
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                        
-                        <Separator className="my-2" />
-                        
-                        <div className="bg-muted p-3 rounded text-sm whitespace-pre-wrap">
-                          {phrase.content}
-                        </div>
-                        
-                        {phrase.related_codes && phrase.related_codes.length > 0 && (
-                          <div className="mt-3">
-                            <p className="text-xs text-muted-foreground mb-1">Related Codes:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {phrase.related_codes.map((code, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {code}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </>
+          <div className="space-y-4">
+            {filteredPhrases.map((phrase) => (
+              <Card key={phrase.id}>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-base">{phrase.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <p className="text-sm whitespace-pre-wrap">{phrase.content}</p>
+                </CardContent>
+                <CardFooter className="py-2 flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => copyToClipboard(phrase.content)}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         )}
       </CardContent>
+      <CardFooter>
+        <p className="text-xs text-muted-foreground">
+          Note: Always review and customize smart phrases to ensure they accurately reflect the patient's specific situation.
+        </p>
+      </CardFooter>
     </Card>
   );
 };
