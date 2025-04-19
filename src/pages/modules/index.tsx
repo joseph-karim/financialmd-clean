@@ -1,20 +1,20 @@
 import { modules } from '@/lib/module-data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { LucideIcon } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import { ClipboardList, Calendar, FileCode, HeartPulse, Plus, Wrench } from 'lucide-react';
 
-// Dynamically import icons
+// Create a map of icon components
 const iconComponents: Record<string, LucideIcon> = {
-  ClipboardList: dynamic(() => import('lucide-react').then((mod) => mod.ClipboardList)),
-  Calendar: dynamic(() => import('lucide-react').then((mod) => mod.Calendar)),
-  FileCode: dynamic(() => import('lucide-react').then((mod) => mod.FileCode)),
-  HeartPulse: dynamic(() => import('lucide-react').then((mod) => mod.HeartPulse)),
-  Plus: dynamic(() => import('lucide-react').then((mod) => mod.Plus)),
-  Wrench: dynamic(() => import('lucide-react').then((mod) => mod.Wrench)),
+  ClipboardList,
+  Calendar,
+  FileCode,
+  HeartPulse,
+  Plus,
+  Wrench
 };
 
 export default function ModulesPage() {
@@ -45,7 +45,7 @@ export default function ModulesPage() {
               </CardContent>
               <CardFooter className="mt-auto">
                 <Button asChild className="w-full">
-                  <Link href={`/modules/${module.slug}`}>
+                  <Link to={`/modules/${module.slug}`}>
                     Explore Module
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Link>
